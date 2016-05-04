@@ -64,7 +64,6 @@ do
 done
 
 if_do_cppcheck=`cat .coding-style | grep "cppcheck:" | cut -c10- | xargs | tr '[:upper:]' '[:lower:]'`
-echo $if_do_cppcheck
 if [ "$if_do_cppcheck" == "true" ]; then
 	# We should not pass non-C/C++ files to cppcheck. Filter filenames with pattern.
 	pattern='\.(c|cpp|cc|cxx|h|hpp)$'
