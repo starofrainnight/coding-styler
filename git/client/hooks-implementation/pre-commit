@@ -34,6 +34,7 @@ Sample '.coding-style' :
 
 style: arduino
 patterns: *.cpp, *.c, *.ino
+cppcheck: true
 EOF
 	exit 2
 fi
@@ -53,6 +54,20 @@ do
     	fi 
 	done
 done
+
+if_do_cppcheck=`cat .coding-style | grep "cppcheck:" | cut -c10- | xargs | tr '[:upper:]' '[:lower:]'`
+echo $if_do_cppcheck
+if [ "$if_do_cppcheck" == "true" ]; then
+	# We should not pass non-C/C++ files to cppcheck. Filter filenames with pattern.
+	pattern='\.(c|cpp|cc|cxx|h|hpp)$'
+	changed_files=$(git diff-index --cached --name-only $against | grep -E $pattern)
+	if [ -n "$changed_files" ]; then
+		cppcheck --error-exitcode=3 $changed_files
+		if [ "$?" == "3" ]; then
+			exit 3
+		fi
+	fi
+fi
 
 # If you want to allow non-ASCII filenames set this variable to true.
 allownonascii=$(git config --bool hooks.allownonascii)
