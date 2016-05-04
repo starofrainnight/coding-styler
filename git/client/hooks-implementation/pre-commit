@@ -46,12 +46,20 @@ do
 	for afile_pattern in "${file_patterns[@]}"; do		
     	afile_pattern=`echo "$afile_pattern" | xargs | tr '[:upper:]' '[:lower:]'`
     	
-    	if [[ $afile_path = $afile_pattern ]]; then
-    		file_format_command="uncrustify -c .coding-styler/cfg/$coding_style.cfg --no-backup $file_path" 
-			echo $file_format_command
-			eval $file_format_command
-			git add $file_path
-    	fi 
+    	if [[ $afile_path != $afile_pattern ]]; then
+			continue
+    	fi
+		
+		file_format_command="uncrustify -c .coding-styler/cfg/$coding_style.cfg --check $file_path"
+		eval $file_format_command
+		if [ "$?" == "0" ]; then
+			continue  
+		fi
+		
+		file_format_command="uncrustify -c .coding-styler/cfg/$coding_style.cfg --no-backup $file_path" 
+		echo $file_format_command
+		eval $file_format_command
+		git add $file_path 
 	done
 done
 
