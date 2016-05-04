@@ -7,6 +7,14 @@
 #
 # To enable this hook, rename this file to "pre-commit".
 
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
 # Invoke source code formater for all source files
 if [ ! -f .coding-style ]; then
     echo "File '.coding-style' not found!"
@@ -30,7 +38,7 @@ EOF
 	exit 2
 fi
 
-git diff --cached --name-only | while read file_path
+git diff --cached --name-only $against | while read file_path
 do
 	# Trim all space and lower all character's case.
 	afile_path=`echo "$file_path" | xargs | tr '[:upper:]' '[:lower:]'`
@@ -45,14 +53,6 @@ do
     	fi 
 	done
 done
-
-if git rev-parse --verify HEAD >/dev/null 2>&1
-then
-	against=HEAD
-else
-	# Initial commit: diff against an empty tree object
-	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
-fi
 
 # If you want to allow non-ASCII filenames set this variable to true.
 allownonascii=$(git config --bool hooks.allownonascii)
