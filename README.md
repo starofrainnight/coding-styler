@@ -9,8 +9,6 @@ After day after day, programmers will get tired to follow the rules while there 
 
 This situation must change! 
 
-How could we focus on the program logic not the coding style rules? 
-
 How could we focus on the program logic but not cause the source code getting unreadable?
 
 Actually there already have some utilities to help for do this job automatically:
