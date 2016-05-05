@@ -5,7 +5,7 @@ Coding styler is a series scripts that use for force coding style on your projec
 
 We are wasting so much time on improving source code quality, doing things like force people to obey a strict paper with hundreds coding rules. We have to yell at programmer whom offend the rules and kick their ass to follow each rule, but they will forget more and more details after a few days. So, there only rules master could remember all details about those rules and commit without any coding style problems. 
 
-After day after day, programmers will get tired to follow the rules while there have much more important thing needs to do. The source code quality will get worse by worse, finally the source code become unreadable and the whole project go into the grave.
+Day after day, programmers will get tired to follow the rules while there have much more important thing needs to do. The source code quality will get worse by worse, finally the source code become unreadable and the whole project go into the grave.
 
 This situation must change! 
 
