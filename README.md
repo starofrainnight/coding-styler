@@ -55,7 +55,7 @@ There must a .coding-style file and the coding styler's repository existed on th
 
 .coding-style example :
 
-    style: arduino
+    style_file: .uncrustify.cfg
     patterns: *.cpp, *.c, *.ino
     cppcheck: true
     
