@@ -50,6 +50,7 @@ There must a .coding-style file and the coding styler's repository existed on th
         +---- .git/ (Git Managed Directory)
         +---- .coding-styler/ (Coding Styler's project files)
         +---- .coding-style (Coding Styler configurations)
+        +---- .uncrustify.cfg (The configurations of format rules)
         #---- CMakeLists.txt
         
 
