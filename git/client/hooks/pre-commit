@@ -63,6 +63,10 @@ do
 	done
 done
 
+# Don't allow automatic filemode changing, if you want to do some, just use 
+# command like : git update-index --chmod=+x script.sh
+git config core.filemode false
+
 if_do_cppcheck=`cat .coding-style | grep "cppcheck:" | cut -c10- | xargs | tr '[:upper:]' '[:lower:]'`
 if [ "$if_do_cppcheck" == "true" ]; then
 	# We should not pass non-C/C++ files to cppcheck. Filter filenames with pattern.
