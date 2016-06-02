@@ -39,6 +39,7 @@ EOF
 	exit 2
 fi
 
+# Force coding stylers to take effect on stashed files
 git diff --cached --name-only $against | while read file_path
 do
 	# Trim all space and lower all character's case.
