@@ -21,18 +21,18 @@ if [ ! -f .coding-style ]; then
     exit 1
 fi
 
-style_file=`cat .coding-style | grep "style:" | cut -c7- | xargs`
+format_style_file=`cat .coding-style | grep "format-style:" | cut -c7- | xargs`
 file_patterns_text=`cat .coding-style | grep "patterns:" | cut -c10- | xargs`
 IFS=',' read -ra file_patterns <<< $file_patterns_text
 
-# If .coding-style does not have "style_file:" and "patterns:", it will failed to commit
-if [ -z "$style_file" ] || [ -z "$file_patterns_text" ]; then 
+# If .coding-style does not have "format-style:" and "patterns:", it will failed to commit
+if [ -z "$format_style_file" ] || [ -z "$file_patterns_text" ]; then
 	cat <<\EOF
 Error: Format invalid of file '.coding-style'!
 
 Sample '.coding-style' :
 
-style_file: .uncrustify.cfg
+format-style: .uncrustify.cfg
 patterns: *.cpp, *.c, *.ino
 cppcheck: true
 EOF
@@ -44,27 +44,27 @@ git diff --cached --name-only $against | while read file_path
 do
 	# Trim all space and lower all character's case.
 	afile_path=`echo "$file_path" | xargs | tr '[:upper:]' '[:lower:]'`
-	for afile_pattern in "${file_patterns[@]}"; do		
+	for afile_pattern in "${file_patterns[@]}"; do
     	afile_pattern=`echo "$afile_pattern" | xargs | tr '[:upper:]' '[:lower:]'`
-    	
+
     	if [[ $afile_path != $afile_pattern ]]; then
 			continue
     	fi
-		
-		file_format_command="uncrustify -c $style_file --check $file_path"
+
+		file_format_command="uncrustify -c $format_style_file --check $file_path"
 		eval $file_format_command
 		if [ "$?" == "0" ]; then
-			continue  
+			continue
 		fi
-		
-		file_format_command="uncrustify -c $style_file --no-backup $file_path" 
+
+		file_format_command="uncrustify -c $format_style_file --no-backup $file_path"
 		echo $file_format_command
 		eval $file_format_command
-		git add $file_path 
+		git add $file_path
 	done
 done
 
-# Don't allow automatic filemode changing, if you want to do some, just use 
+# Don't allow automatic filemode changing, if you want to do some, just use
 # command like : git update-index --chmod=+x script.sh
 git config core.filemode false
 
