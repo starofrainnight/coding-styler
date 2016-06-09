@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # An example hook script to verify what is about to be committed.
 # Called by "git commit" with no arguments.  The hook should
@@ -21,8 +21,9 @@ if [ ! -f .coding-style ]; then
     exit 1
 fi
 
-format_style_file=`cat .coding-style | grep "format-style:" | cut -c7- | xargs`
-file_patterns_text=`cat .coding-style | grep "patterns:" | cut -c10- | xargs`
+format_style_file=`cat .coding-style | grep "format-style:" | cut -c14- | tr '\n' ' ' | tr '\r' ' ' | xargs`
+name_style_file=`cat .coding-style | grep "name-style:" | cut -c12- | tr '\n' ' ' | tr '\r' ' ' | xargs`
+file_patterns_text=`cat .coding-style | grep "patterns:" | cut -c10- | tr '\n' ' ' | tr '\r' ' ' | xargs`
 IFS=',' read -ra file_patterns <<< $file_patterns_text
 
 # If .coding-style does not have "format-style:" and "patterns:", it will failed to commit
@@ -33,6 +34,7 @@ Error: Format invalid of file '.coding-style'!
 Sample '.coding-style' :
 
 format-style: .uncrustify.cfg
+name-style: .ncstyler.yaml
 patterns: *.cpp, *.c, *.ino
 cppcheck: true
 EOF
@@ -44,12 +46,19 @@ git diff --cached --name-only $against | while read file_path
 do
 	# Trim all space and lower all character's case.
 	afile_path=`echo "$file_path" | xargs | tr '[:upper:]' '[:lower:]'`
+	for_exit_value=0
 	for afile_pattern in "${file_patterns[@]}"; do
     	afile_pattern=`echo "$afile_pattern" | xargs | tr '[:upper:]' '[:lower:]'`
-
     	if [[ $afile_path != $afile_pattern ]]; then
 			continue
     	fi
+
+		check_file_name_command="ncstyler -c $name_style_file $file_path"
+		echo "$check_file_name_command"
+		eval $check_file_name_command
+		if [ "$?" != "0" ]; then
+			exit 5 # Just exit "while read"
+		fi
 
 		file_format_command="uncrustify -c $format_style_file --check $file_path"
 		eval $file_format_command
@@ -58,17 +67,19 @@ do
 		fi
 
 		file_format_command="uncrustify -c $format_style_file --no-backup $file_path"
-		echo $file_format_command
+		echo "$file_format_command"
 		eval $file_format_command
 		git add $file_path
 	done
 done
+while_exit_value=$?
+[ $while_exit_value != 0 ] && exit $while_exit_value;
 
 # Don't allow automatic filemode changing, if you want to do some, just use
 # command like : git update-index --chmod=+x script.sh
 git config core.filemode false
 
-if_do_cppcheck=`cat .coding-style | grep "cppcheck:" | cut -c10- | xargs | tr '[:upper:]' '[:lower:]'`
+if_do_cppcheck=`cat .coding-style | grep "cppcheck:" | cut -c10- | tr '\n' ' ' | tr '\r' ' ' | xargs | tr '[:upper:]' '[:lower:]'`
 if [ "$if_do_cppcheck" == "true" ]; then
 	# We should not pass non-C/C++ files to cppcheck. Filter filenames with pattern.
 	pattern='\.(c|cpp|cc|cxx|h|hpp)$'
