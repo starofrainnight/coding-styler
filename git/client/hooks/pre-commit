@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env python
 #
 # An example hook script to verify what is about to be committed.
 # Called by "git commit" with no arguments.  The hook should
@@ -7,109 +7,114 @@
 #
 # To enable this hook, rename this file to "pre-commit".
 
-if git rev-parse --verify HEAD >/dev/null 2>&1
-then
-	against=HEAD
-else
+import os
+import os.path
+import sys
+import subprocess
+import configparser
+import yaml
+import locale
+import fnmatch
+import re
+
+def print_err(astr):
+	print(astr, file=sys.stderr)
+
+def dict_get(adict, key, default=None):
+	ret = adict.get(key, default)
+	if (ret is None) and (default is not None):
+		ret = default
+	return ret
+
+# os.system("git rev-parse --verify HEAD >/dev/null 2>&1")
+result = subprocess.call("git rev-parse --verify HEAD")
+if not result:
+	against = "HEAD"
+else:
 	# Initial commit: diff against an empty tree object
-	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
-fi
+	against = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 # Invoke source code formater for all source files
-if [ ! -f .coding-style ]; then
-    echo "File '.coding-style' not found!"
-    exit 1
-fi
+coding_style_file_name = ".coding-style"
+if not os.path.exists(coding_style_file_name):
+	print_err("File '%s' not found!" % coding_style_file_name)
+	sys.exit(1)
 
-format_style_file=`cat .coding-style | grep "format-style:" | cut -c14- | tr '\n' ' ' | tr '\r' ' ' | xargs`
-name_style_file=`cat .coding-style | grep "name-style:" | cut -c12- | tr '\n' ' ' | tr '\r' ' ' | xargs`
-file_patterns_text=`cat .coding-style | grep "patterns:" | cut -c10- | tr '\n' ' ' | tr '\r' ' ' | xargs`
-IFS=',' read -ra file_patterns <<< $file_patterns_text
+configs = yaml.load(open(coding_style_file_name))
 
-# If .coding-style does not have "format-style:" and "patterns:", it will failed to commit
-if [ -z "$format_style_file" ] || [ -z "$file_patterns_text" ]; then
-	cat <<\EOF
-Error: Format invalid of file '.coding-style'!
+value = configs.get("cppcheck", False)
+if value is None:
+	configs["cppcheck"] = False
 
-Sample '.coding-style' :
+value = configs.get("include-patterns")
+if value is None:
+	configs["include-patterns"] = []
 
-format-style: .uncrustify.cfg
-name-style: .ncstyler.yaml
-patterns: *.cpp, *.c, *.ino
-cppcheck: true
-EOF
-	exit 2
-fi
+value = configs.get("exclude-patterns")
+if value is None:
+	configs["exclude-patterns"] = []
 
 # Force coding stylers to take effect on stashed files
-git diff --cached --name-only $against | while read file_path
-do
-	# Trim all space and lower all character's case.
-	afile_path=`echo "$file_path" | xargs | tr '[:upper:]' '[:lower:]'`
-	for_exit_value=0
-	for afile_pattern in "${file_patterns[@]}"; do
-    	afile_pattern=`echo "$afile_pattern" | xargs | tr '[:upper:]' '[:lower:]'`
-    	if [[ $afile_path != $afile_pattern ]]; then
-			continue
-    	fi
-
-		check_file_name_command="ncstyler -c $name_style_file $file_path"
-		echo "$check_file_name_command"
-		eval $check_file_name_command
-		if [ "$?" != "0" ]; then
-			exit 5 # Just exit "while read"
-		fi
-
-		file_format_command="uncrustify -c $format_style_file --check $file_path"
-		eval $file_format_command
-		if [ "$?" == "0" ]; then
-			continue
-		fi
-
-		file_format_command="uncrustify -c $format_style_file --no-backup $file_path"
-		echo "$file_format_command"
-		eval $file_format_command
-		git add $file_path
-	done
-done
-while_exit_value=$?
-[ $while_exit_value != 0 ] && exit $while_exit_value;
-
-# Don't allow automatic filemode changing, if you want to do some, just use
-# command like : git update-index --chmod=+x script.sh
-git config core.filemode false
-
-if_do_cppcheck=`cat .coding-style | grep "cppcheck:" | cut -c10- | tr '\n' ' ' | tr '\r' ' ' | xargs | tr '[:upper:]' '[:lower:]'`
-if [ "$if_do_cppcheck" == "true" ]; then
-	# We should not pass non-C/C++ files to cppcheck. Filter filenames with pattern.
-	pattern='\.(c|cpp|cc|cxx|h|hpp)$'
-	changed_files=$(git diff-index --cached --name-only $against | grep -E $pattern)
-	if [ -n "$changed_files" ]; then
-		cppcheck --error-exitcode=3 $changed_files
-		if [ "$?" == "3" ]; then
-			exit 3
-		fi
-	fi
-fi
+staged_files = subprocess.check_output("git diff --cached --name-only %s" % against)
+staged_files = staged_files.decode(locale.getdefaultlocale()[1])
+staged_files = staged_files.strip().splitlines()
+if len(staged_files) <= 0:
+	print_err("No staged files !")
+	sys.exit(2)
 
 # If you want to allow non-ASCII filenames set this variable to true.
-allownonascii=$(git config --bool hooks.allownonascii)
+try:
+	allownonascii_text = subprocess.check_output(
+		"git config --bool hooks.allownonascii").strip()
+except subprocess.CalledProcessError:
+	allownonascii_text = ""
+allownonascii = 'true' in allownonascii_text.lower()
 
-# Redirect output to stderr.
-exec 1>&2
+parsing_count = 0
+for file_path in staged_files:
+	print("==========\n%s: Parsing %s" % (parsing_count, file_path))
+	parsing_count += 1
 
-# Cross platform projects tend to avoid non-ASCII filenames; prevent
-# them from being added to the repository. We exploit the fact that the
-# printable range starts at the space character and ends with tilde.
-if [ "$allownonascii" != "true" ] &&
-	# Note that the use of brackets around a tr range is ok here, (it's
-	# even required, for portability to Solaris 10's /usr/bin/tr), since
-	# the square bracket bytes happen to fall in the designated range.
-	test $(git diff --cached --name-only --diff-filter=A -z $against |
-	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
-then
-	cat <<\EOF
-Error: Attempt to add a non-ASCII file name.
+	is_included = False
+	for pattern in configs["include-patterns"]:
+		if fnmatch.fnmatch(file_path, pattern):
+			is_included = True
+			break
+
+	if not is_included:
+		print("Not include this file name pattern !")
+		continue
+
+	is_ignored = False
+	for pattern in configs["exclude-patterns"]:
+		if fnmatch.fnmatch(file_path, pattern):
+			is_ignored = True
+			break
+
+	if is_ignored:
+		print("Excluded this file name pattern !")
+		continue
+
+	command = "ncstyler -c %s %s" % (configs.get("name-style"), file_path)
+	print(command)
+	ret = subprocess.call(command)
+	if ret != 0:
+		sys.exit(3)
+
+	command = "uncrustify -c %s --check %s" % (configs.get("format-style"), file_path)
+	print(command)
+	ret = subprocess.call(command)
+	if ret != 0:
+		command = "uncrustify -c %s --no-backup %s" % (configs.get("format-style"), file_path)
+		print(command)
+		subprocess.call(command)
+
+	command = "git add %s" % file_path
+	subprocess.call(command)
+
+	if not allownonascii:
+		if re.match(r"^[\w\.]+$", os.path.basename(file_path)) is None:
+			print("""Error: Attempt to add a non-ASCII file name (%s).
 
 This can cause problems if you want to work with people on other platforms.
 
@@ -117,9 +122,18 @@ To be portable it is advisable to rename the file.
 
 If you know what you are doing you can disable this check using:
 
-  git config hooks.allownonascii true
-EOF
-	exit 4
-fi
+    git config hooks.allownonascii true""" % file_path)
+			sys.exit(5)
 
-exit 0
+	if configs.get("cppcheck"):
+		command = "cppcheck %s" % file_path
+		print(command)
+		ret = subprocess.call(command)
+		if ret != 0:
+			sys.exit(6)
+
+# Don't allow automatic filemode changing, if you want to do some, just use
+# command like : git update-index --chmod=+x script.sh
+subprocess.call("git config core.filemode false")
+
+sys.exit(0)
