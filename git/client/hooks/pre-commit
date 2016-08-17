@@ -11,14 +11,14 @@ import os
 import os.path
 import sys
 import subprocess
-import configparser
 import yaml
 import locale
 import fnmatch
 import re
+import six
 
 def print_err(astr):
-	print(astr, file=sys.stderr)
+	six.print_(astr, file=sys.stderr)
 
 def dict_get(adict, key, default=None):
 	ret = adict.get(key, default)
@@ -27,7 +27,7 @@ def dict_get(adict, key, default=None):
 	return ret
 
 # os.system("git rev-parse --verify HEAD >/dev/null 2>&1")
-result = subprocess.call("git rev-parse --verify HEAD")
+result = subprocess.call("git rev-parse --verify HEAD", shell=True)
 if not result:
 	against = "HEAD"
 else:
@@ -55,7 +55,7 @@ if value is None:
 	configs["exclude-patterns"] = []
 
 # Force coding stylers to take effect on stashed files
-staged_files = subprocess.check_output("git diff --cached --name-only %s" % against)
+staged_files = subprocess.check_output("git diff --cached --name-only %s" % against, shell=True)
 staged_files = staged_files.decode(locale.getdefaultlocale()[1])
 staged_files = staged_files.strip().splitlines()
 if len(staged_files) <= 0:
@@ -65,7 +65,7 @@ if len(staged_files) <= 0:
 # If you want to allow non-ASCII filenames set this variable to true.
 try:
 	allownonascii_text = subprocess.check_output(
-		"git config --bool hooks.allownonascii").strip()
+		"git config --bool hooks.allownonascii", shell=True).strip()
 except subprocess.CalledProcessError:
 	allownonascii_text = ""
 allownonascii = 'true' in allownonascii_text.lower()
@@ -97,20 +97,20 @@ for file_path in staged_files:
 
 	command = "ncstyler -c %s %s" % (configs.get("name-style"), file_path)
 	print(command)
-	ret = subprocess.call(command)
+	ret = subprocess.call(command, shell=True)
 	if ret != 0:
 		sys.exit(3)
 
 	command = "uncrustify -c %s --check %s" % (configs.get("format-style"), file_path)
 	print(command)
-	ret = subprocess.call(command)
+	ret = subprocess.call(command, shell=True)
 	if ret != 0:
 		command = "uncrustify -c %s --no-backup %s" % (configs.get("format-style"), file_path)
 		print(command)
-		subprocess.call(command)
+		subprocess.call(command, shell=True)
 
 	command = "git add %s" % file_path
-	subprocess.call(command)
+	subprocess.call(command, shell=True)
 
 	if not allownonascii:
 		if re.match(r"^[\w\.]+$", os.path.basename(file_path)) is None:
@@ -128,12 +128,12 @@ If you know what you are doing you can disable this check using:
 	if configs.get("cppcheck"):
 		command = "cppcheck %s" % file_path
 		print(command)
-		ret = subprocess.call(command)
+		ret = subprocess.call(command, shell=True)
 		if ret != 0:
 			sys.exit(6)
 
 # Don't allow automatic filemode changing, if you want to do some, just use
 # command like : git update-index --chmod=+x script.sh
-subprocess.call("git config core.filemode false")
+subprocess.call("git config core.filemode false", shell=True)
 
 sys.exit(0)
