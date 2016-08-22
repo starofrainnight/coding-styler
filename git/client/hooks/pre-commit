@@ -109,7 +109,7 @@ for file_path in staged_files:
 	print(command)
 	ret = subprocess.call(command, shell=True)
 	if ret != 0:
-		command = "uncrustify -c %s --no-backup %s" % (configs.get("format-style"), file_path)
+		command = "uncrustify -l CPP -c %s --no-backup %s" % (configs.get("format-style"), file_path)
 		print(command)
 		subprocess.call(command, shell=True)
 
