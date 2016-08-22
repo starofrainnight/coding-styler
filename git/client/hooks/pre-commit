@@ -95,6 +95,10 @@ for file_path in staged_files:
 		print("Excluded this file name pattern !")
 		continue
 
+	if not os.path.exists(file_path):
+		print("File not found : %s" % file_path)
+		continue
+
 	command = "ncstyler -c %s %s" % (configs.get("name-style"), file_path)
 	print(command)
 	ret = subprocess.call(command, shell=True)
