@@ -99,12 +99,7 @@ for file_path in staged_files:
 		print("File not found : %s" % file_path)
 		continue
 
-	command = "ncstyler -c %s %s" % (configs.get("name-style"), file_path)
-	print(command)
-	ret = subprocess.call(command, shell=True)
-	if ret != 0:
-		sys.exit(3)
-
+	# We should clear the source file before check names or other stuffs
 	command = "uncrustify -l CPP -c %s --check %s" % (configs.get("format-style"), file_path)
 	print(command)
 	ret = subprocess.call(command, shell=True)
@@ -112,6 +107,12 @@ for file_path in staged_files:
 		command = "uncrustify -l CPP -c %s --no-backup %s" % (configs.get("format-style"), file_path)
 		print(command)
 		subprocess.call(command, shell=True)
+
+	command = "ncstyler -c %s %s" % (configs.get("name-style"), file_path)
+	print(command)
+	ret = subprocess.call(command, shell=True)
+	if ret != 0:
+		sys.exit(3)
 
 	command = "git add %s" % file_path
 	subprocess.call(command, shell=True)
